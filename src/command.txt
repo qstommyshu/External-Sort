@@ -1,0 +1,1 @@
+python extsort.py ../small_input.dat output.dat 24 8 120 1
