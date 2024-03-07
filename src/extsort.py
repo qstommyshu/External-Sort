@@ -13,6 +13,7 @@ record_size = int(sys.argv[3]) # in B
 key_size = int(sys.argv[4]) # in B
 amt_of_mem = float(sys.argv[5]) # in MB
 
+# initialize variables
 num_of_buf = math.floor(amt_of_mem * 1024 * 1024 / record_size)
 is_ascending = False if sys.argv == "1" else True
 
@@ -21,45 +22,36 @@ input_file_size = os.path.getsize(input_file_name)
 num_of_records = math.floor(input_file_size / record_size)
 num_of_runs = math.ceil(num_of_records / num_of_buf)
 
-output_file_number = 0
+
+if os.path.exists("./temp"):
+    shutil.rmtree("./temp")
+os.makedirs("./temp")
 
 pass_num = 0
-output_run_num = 0
 
 # pass 0
 # Initialize buffer
 buf = [None] * num_of_buf
 
 # read in file as binary
-f = open(input_file_name, "rb")
+with open(input_file_name, "rb") as input_file:
+    for output_run_num in range(num_of_runs):
+        # write out one sorted run
+        for i in range(num_of_buf):
+            buf[i] = input_file.read(record_size)
+        buf.sort()
+        with open(f"./temp/pass{pass_num}_{output_run_num}.dat", "ab") as output_file:
+            for record in buf:
+                output_file.write(record)
 
-if os.path.exists("./temp"):
-    shutil.rmtree("./temp")
-os.makedirs("./temp")
+# pass 0 done
 
-for output_run_num in range(num_of_runs):
-    # write out one sorted run
-    for i in range(num_of_buf):
-        buf[i] = f.read(record_size)
-    buf.sort()
-    sorted_data = b''.join(buf)
-    out = open(f"./temp/pass{pass_num}_{output_run_num}.dat", "ab")
-    out.write(sorted_data)
-    out.close()
-    # reset buffer for the next run
-    buf = [None] * num_of_buf
-f.close()
-
-num_of_input_buf = num_of_buf - 1
-num_of_output_buf = 1
+input_buf_size = num_of_buf - 1
 
 # remaining passes
-total_num_of_passes = math.ceil(math.log(num_of_runs, num_of_input_buf))
+total_num_of_passes = math.ceil(math.log(num_of_runs, input_buf_size))
 
-prev_max_run_num = output_run_num
-load_run_start = 0
-
-
+prev_max_run_num = output_run_num # 12
 
 # merge
 # passes
@@ -67,30 +59,28 @@ while pass_num != total_num_of_passes:
     # runs
     pass_num += 1
     next_input_run_to_load = 0
-    output_run_num = 0 
+    output_run_num = -1
     remain_runs_to_load = prev_max_run_num + 1
     
-    print(remain_runs_to_load)
-
+    print(f"remain runs is {remain_runs_to_load}")
 
     # runs
-    while remain_runs_to_load > 0:
+    while remain_runs_to_load > 0: # 13
+        output_run_num += 1
         input_buf = []
         output_file = open(f"./temp/pass{pass_num}_{output_run_num}.dat", "ab")
 
-        for i in range(min(num_of_input_buf, remain_runs_to_load)):
-            # print(num_of_input_buf, prev_max_run_num)
+        for i in range(min(input_buf_size, remain_runs_to_load)):
             input_buf.append(open(f"./temp/pass{pass_num-1}_{next_input_run_to_load}.dat", "rb"))
-            next_input_run_to_load += 1
+            next_input_run_to_load += 1 # loaded runs, so update
             remain_runs_to_load -= 1
-            # print(next_run_to_load)
 
+        # merge
         heap = []
         for file in input_buf:
-            if file != None:
-                record = file.read(record_size)
-                if record:
-                    heapq.heappush(heap, (record, file))
+            record = file.read(record_size)
+            if record:
+                heapq.heappush(heap, (record, file))
         while heap:
             record, file = heapq.heappop(heap)
             output_file.write(record)
@@ -98,7 +88,6 @@ while pass_num != total_num_of_passes:
             if next_record:
                 heapq.heappush(heap, (next_record, file))
         input_buf.clear()
-        output_run_num += 1
     
-    prev_max_run_num = output_run_num - 1 # TODO: fix this -1
+    prev_max_run_num = output_run_num
     print(f"output_run_num is {output_run_num}")
