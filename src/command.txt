@@ -1,1 +1,8 @@
 python extsort.py ../small_input.dat output.dat 24 8 120 1
+
+# command given in the question
+extsort input.dat output.dat 100 8 32 1
+
+
+# 8 buffers
+python extsort.py ../small_input.dat output.dat 100 8 0.0008 1
