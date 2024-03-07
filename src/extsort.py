@@ -24,7 +24,7 @@ num_of_runs = math.ceil(num_of_records / num_of_buf)
 output_file_number = 0
 
 pass_num = 0
-run_num = 0
+output_run_num = 0
 
 # pass 0
 # Initialize buffer
@@ -37,66 +37,68 @@ if os.path.exists("./temp"):
     shutil.rmtree("./temp")
 os.makedirs("./temp")
 
-for run_num in range(num_of_runs):
+for output_run_num in range(num_of_runs):
     # write out one sorted run
     for i in range(num_of_buf):
         buf[i] = f.read(record_size)
     buf.sort()
-    # print(min(buf))
     sorted_data = b''.join(buf)
-    # print(sorted_data) # TODO: where did  went?
-    out = open(f"./temp/pass{pass_num}_{run_num}.dat", "ab")
+    out = open(f"./temp/pass{pass_num}_{output_run_num}.dat", "ab")
     out.write(sorted_data)
     out.close()
     # reset buffer for the next run
     buf = [None] * num_of_buf
 f.close()
 
-# remaining passes
-pass_num += 1
-run_num = 0
 num_of_input_buf = num_of_buf - 1
 num_of_output_buf = 1
 
+# remaining passes
+total_num_of_passes = math.ceil(math.log(num_of_runs, num_of_input_buf))
 
-
-# 先写个merge一次的
-buf = [None] * num_of_input_buf
-input_file_buf = [None] * num_of_input_buf
-
-output_file_buf = open(f"./temp/pass{pass_num}_run{run_num}.dat", "ab")
-
-for i in range(num_of_input_buf):
-    input_file_buf[i] = open(f"./temp/pass{pass_num-1}_{i}.dat", "rb")
-
-heap = []
-for file in input_file_buf:
-    record = file.read(record_size)
-    if record:
-        heapq.heappush(heap, (record, file))
-
-while heap:
-    record, file = heapq.heappop(heap)
-    output_file_buf.write(record)
-    next_record = file.read(record_size)
-    if next_record:
-        heapq.heappush(heap, (next_record, file))
+prev_max_run_num = output_run_num
+load_run_start = 0
 
 
 
-# # store file pointers and load record to buffer
-# for i in range(num_of_input_buf):
-#     # TODO: last file might have less elements, when to stop?
-#     f = open(f"./temp/pass{pass_num-1}_{i}.dat", "rb")
-#     input_file_buf[i] = f
-#     buf[i] = input_file_buf[i].read(record_size)
+# merge
+# passes
+while pass_num != total_num_of_passes:
+    # runs
+    pass_num += 1
+    next_input_run_to_load = 0
+    output_run_num = 0 
+    remain_runs_to_load = prev_max_run_num + 1
+    
+    print(remain_runs_to_load)
 
 
-# size_of_run = num_of_buf * num_of_input_buf
-# for i in range(size_of_run):
-#     min_record = min(buf)
-#     min_index = buf.index(min_record)
-#     output_file_buf.write(min_record)
-#     # TODO: what happen if it read to the end of file? It just read b''
-#     buf[min_index] = input_file_buf[min_index].read(record_size)
-# print(buf)
+    # runs
+    while remain_runs_to_load > 0:
+        input_buf = []
+        output_file = open(f"./temp/pass{pass_num}_{output_run_num}.dat", "ab")
+
+        for i in range(min(num_of_input_buf, remain_runs_to_load)):
+            # print(num_of_input_buf, prev_max_run_num)
+            input_buf.append(open(f"./temp/pass{pass_num-1}_{next_input_run_to_load}.dat", "rb"))
+            next_input_run_to_load += 1
+            remain_runs_to_load -= 1
+            # print(next_run_to_load)
+
+        heap = []
+        for file in input_buf:
+            if file != None:
+                record = file.read(record_size)
+                if record:
+                    heapq.heappush(heap, (record, file))
+        while heap:
+            record, file = heapq.heappop(heap)
+            output_file.write(record)
+            next_record = file.read(record_size)
+            if next_record:
+                heapq.heappush(heap, (next_record, file))
+        input_buf.clear()
+        output_run_num += 1
+    
+    prev_max_run_num = output_run_num - 1 # TODO: fix this -1
+    print(f"output_run_num is {output_run_num}")
