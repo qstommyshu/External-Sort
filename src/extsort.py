@@ -4,6 +4,7 @@ import math
 import shutil
 import heapq
 
+# This class is created specifically for the reversed comparison for minheap to max heap in python
 class ReversedRecord:
     def __init__(self, data):
         self.data = data
@@ -57,7 +58,7 @@ input_buf_size = num_of_buf - 1
 # remaining passes
 total_num_of_passes = math.ceil(math.log(num_of_runs, input_buf_size))
 
-prev_max_run_num = cur_output_run_num # 12
+prev_max_run_num = cur_output_run_num
 
 # merge
 # passes
@@ -83,6 +84,7 @@ while pass_num != total_num_of_passes:
             remain_runs_to_load -= 1
 
         # merge
+        # heap is a data structure that allows get minimum element is O(log(n))
         heap = []
         for file in input_buf:
             record = file.read(record_size)
@@ -100,7 +102,6 @@ while pass_num != total_num_of_passes:
             output_file.write(record)
             next_record = file.read(record_size)
             if next_record:
-                print(f"is_ascending is {is_ascending}")
                 if is_ascending:
                     heapq.heappush(heap, (next_record, file))
                 else:
