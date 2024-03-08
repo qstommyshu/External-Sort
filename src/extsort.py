@@ -4,6 +4,15 @@ import math
 import shutil
 import heapq
 
+class ReversedRecord:
+    def __init__(self, data):
+        self.data = data
+    def __lt__(self, other):
+        # Invert comparison for max heap
+        return self.data > other.data
+    def __eq__(self, other):
+        return self.data == other.data
+
 # parse command arguments
 program_name, input_file_name, output_file_name, record_size, key_size, amt_of_mem, is_ascending = sys.argv
 
@@ -15,7 +24,7 @@ amt_of_mem = float(sys.argv[5]) # in MB
 
 # initialize variables
 num_of_buf = math.floor(amt_of_mem * 1024 * 1024 / record_size)
-is_ascending = False if sys.argv == "1" else True # TODO: fix ascending
+is_ascending = True if sys.argv[6] == "1" else False
 
 # check input file size
 input_file_size = os.path.getsize(input_file_name)
@@ -38,7 +47,7 @@ with open(input_file_name, "rb") as input_file:
         # write out one sorted run
         for i in range(num_of_buf):
             buf[i] = input_file.read(record_size)
-        buf.sort(reverse=is_ascending)
+        buf.sort(reverse=not is_ascending)
         with open(f"./temp/pass{pass_num}_{cur_output_run_num}.dat", "ab") as output_file:
             for record in buf:
                 output_file.write(record)
@@ -78,13 +87,24 @@ while pass_num != total_num_of_passes:
         for file in input_buf:
             record = file.read(record_size)
             if record:
-                heapq.heappush(heap, (record, file))
+                if is_ascending:
+                    heapq.heappush(heap, (record, file))
+                else:
+                    heapq.heappush(heap, (ReversedRecord(record), file))
         while heap:
-            record, file = heapq.heappop(heap)
+            if is_ascending:
+                record, file = heapq.heappop(heap)
+            else:
+                reversedRecord, file = heapq.heappop(heap)
+                record = reversedRecord.data
             output_file.write(record)
             next_record = file.read(record_size)
             if next_record:
-                heapq.heappush(heap, (next_record, file))
+                print(f"is_ascending is {is_ascending}")
+                if is_ascending:
+                    heapq.heappush(heap, (next_record, file))
+                else:
+                    heapq.heappush(heap, (ReversedRecord(next_record), file))
         for file in input_buf:
             file.close()
         input_buf.clear()
